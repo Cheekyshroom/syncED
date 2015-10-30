@@ -11,7 +11,7 @@ class Server
       @users = []
    end
    def handle_connection
-      user = Connection.new(@socket.accept, @users.length)
+      user = Connection.new(@socket.accept, @users.length, @config)
       @users << user
       user.handle
    end
@@ -31,7 +31,10 @@ end
 
 def run_server
    config_exists = Dir.exist?("data")
-   Dir.mkdir("data") unless config_exists
+   unless config_exists
+      Dir.mkdir("data")
+      Dir.mkdir("data/files")
+   end
    config = config_exists ? Cfg.new("data/config.pstore") : Cfg.new
    server = Server.new(config)
    server.run

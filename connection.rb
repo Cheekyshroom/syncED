@@ -4,7 +4,7 @@ require "base64"
 
 class Connection
    attr_reader :thread, :username
-   def initialize(socket, id)
+   def initialize(socket, id, config)
       @thread = nil
       @socket = socket
       @id = id
@@ -14,11 +14,18 @@ class Connection
          @sanitized_name = sanitize(@username) #sanitize their username for later
          dir = "data/files/#{@sanitized_name}/"
          Dir.mkdir(dir) unless Dir.exist?(dir)
+         config.add_user(@username) #add their username to our permanent config file.
+         
+
+         puts("User #{@username} initialized.")
       end
    end
    def handle
+      @thread.join #make sure that we've got our username first
       thread = Thread.new do
-         @thread.join #make sure that we've got our username first
+         puts("Handling user #{@username}.")
+
+
          @thread = thread #if we have, make this the main thread for this connection
          #arbitrary test messages
          10.times do |i|
@@ -29,7 +36,7 @@ class Connection
          receive_file
          #presumably this connection is over with, get rid of the client's sockets
          #remove this later
-         @socket.puts("Bye client! #{@id}")
+         @socket.puts("Bye client \##{@id}")
          @socket.close
       end
    end

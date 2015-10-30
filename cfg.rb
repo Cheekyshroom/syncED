@@ -17,4 +17,7 @@ class Cfg
    def get(name)
       @data.transaction { @data[name] }
    end
+   def add_user(name)
+      @data.transaction { @data["users"] << name }
+   end
 end
