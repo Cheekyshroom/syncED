@@ -1,39 +1,27 @@
 #!/usr/bin/env ruby
-require "pstore"
 require "socket"
-
-class Cfg
-   @@default_name = "data/config.pstore"
-   def initialize(filename=nil)
-      if filename then
-         @data = PStore.new(filename)
-      else
-         @data = PStore.new(@@default_name)
-         @data.transaction do 
-            @data["users"] = []
-            @data["port"] = 12345
-            @data["name"] = "Unnamed server!"
-         end
-      end
-   end
-   def get(name)
-      @data.transaction { @data[name] }
-   end
-end
+require_relative "cfg"
+require_relative "connection"
 
 class Server
    def initialize(config)
       @config = config
       @connections = []
       @socket = TCPServer.new(@config.get("port"))
-      c = @socket.accept
-      c.puts("Hello")
-      loop do
-         i = c.gets.chomp
-         c.puts(@config.get(i))
-         break if i == "quit"
+      @users = []
+   end
+   def handle_connection
+      user = Connection.new(@socket.accept, @users.length)
+      @users << user
+      user.handle
+   end
+   def run
+      puts("Starting server.")
+      begin
+        loop { handle_connection }
+      rescue Interrupt => e
+         puts("\rClosing server.")
       end
-      c.close
    end
 end
 
@@ -46,10 +34,10 @@ def run_server
    Dir.mkdir("data") unless config_exists
    config = config_exists ? Cfg.new("data/config.pstore") : Cfg.new
    server = Server.new(config)
+   server.run
 end
 
 $type, = ARGV
-
 case $type
 when "connect" then
    run_client
