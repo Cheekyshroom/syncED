@@ -19,9 +19,10 @@ class Connection
    end
    def handle
       thread = Thread.new do
-         puts("Handling user #{@username}.")
          @thread.join #make sure that we've got our username first
          @thread = thread #if we have, make this the main thread for this connection
+
+         send_file("conv.rb", "conv.rb")
 
          loop do #main user interaciton loop
             @socket.puts("Send a message with your decision:")
@@ -32,6 +33,15 @@ class Connection
             @socket.puts("'download' to download a certain file") #used in combination with list to sync files
             decision = @socket.gets.chomp
             case decision #probably make this a hash-table lookup, but not right now
+               when "list" then
+
+               when "upload" then
+
+               when "remove" then
+
+               when "download" then
+
+               else break
             end
          end
 
@@ -44,19 +54,44 @@ class Connection
    def receive_file
       path = @socket.gets.chomp #read the desired filename from the client
       sanitized_path = sanitize(path) #sanitize it just in case
-      if (@sanitized_name) #if we've got a username and it's sanitized
+      if @sanitized_name #if we've got a username and it's sanitized
          finalized_path = "data/files/#{@sanitized_name}/#{sanitized_path}"
          size = @socket.gets.chomp.to_i #get the size from the client
-         incomplete_size = size #size left to read
+         remaining_bytes = size #size left to read
          max_read_size = 8*1024*1024 #max read size is a nice arbirary 8mb
          File.open(finalized_path, "w") do |f|
-            while incomplete_size > 0 #while we have stuff to read
-               size_to_read = max_read_size > incomplete_size ? incomplete_size : max_read_size
+            while remaining_bytes > 0 #while we have stuff to read
+               size_to_read = max_read_size > remaining_bytes ? remaining_bytes : max_read_size
                data = @socket.read(size_to_read) #get the data from the client
                f.write(data) #write that data to a file.
-               incomplete_size -= size_to_read
+               remaining_bytes -= size_to_read
             end
          end
+         @socket.puts("File #{path} successfully received.")
+      end
+   end
+   def request_send_file
+      path = @socket.gets.chomp #receive a file path
+      sanitized_path = sanitize(path) #sanitize it
+      finalized_path = "data/files/#{@sanitized_name}/#{sanitized_path}" #complete it
+      send_file(finalized_path, path) #send the file
+   end
+   def send_file(safe_path, path)
+      puts("Attempting to send file to #{@username}")
+      if @sanitized_name and File.exist?(safe_path)
+         @socket.puts("Sending file #{path}")
+         size = File.size(safe_path)
+         max_write_size = 8*1024*1024 #max write size is a nice arbirary 8mb
+         remaining_bytes = size
+         File.open(safe_path, "r") do |f|
+            while remaining_bytes > 0
+               size_to_write = max_write_size > remaining_bytes ? remaining_bytes : max_read_size
+               data = f.read(size_to_write)
+               @socket.write(data)
+               remaining_bytes -= size_to_write
+            end
+         end
+         @socket.puts("File #{path} successfully sent.")
       end
    end
    def sanitize(name)
