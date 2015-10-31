@@ -1,42 +1,13 @@
 #!/usr/bin/env ruby
-require "socket"
-require_relative "cfg"
-require_relative "connection"
-
-class Server
-   def initialize(config)
-      @config = config
-      @connections = []
-      @socket = TCPServer.new(@config.get("port"))
-      @users = []
-   end
-   def handle_connection
-      user = Connection.new(@socket.accept, @users.length, @config)
-      @users << user
-      user.handle
-   end
-   def run
-      puts("Starting server.")
-      begin
-        loop { handle_connection }
-      rescue Interrupt => e
-         puts("\rClosing server.")
-      end
-   end
-end
+require_relative "server"
+require_relative "client"
 
 def run_client
 
 end
 
 def run_server
-   config_exists = Dir.exist?("data")
-   unless config_exists
-      Dir.mkdir("data")
-      Dir.mkdir("data/files")
-   end
-   config = config_exists ? Cfg.new("data/config.pstore") : Cfg.new
-   server = Server.new(config)
+   server = Server.new
    server.run
 end
 
