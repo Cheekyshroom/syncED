@@ -16,7 +16,7 @@ class Server
       @config = PStore.new(@@default_config_name)
       unless config_exists
          @config.transaction do 
-            @config["users"] = []
+            @config["users"] = {}
             @config["port"] = 12345
             @config["name"] = "Unnamed server!"
          end
@@ -34,7 +34,7 @@ class Server
       @config.transaction { @config[name] }
    end
    def add_user_to_config(name)
-      @config.transaction { @config["users"] << name }
+      @config.transaction { @config["users"][name] = true }
    end
    def run
       puts("Starting server.")
