@@ -26,11 +26,13 @@ class Connection
          loop do #main user interaciton loop
             @socket.puts("Send a message with your decision:")
             @socket.puts("'list' to list currently owned files,")
-            @socket.puts("'new' to upload a new file,")
+            @socket.puts("'upload' to upload a new file,")
             @socket.puts("'remove' to remove a file,")
-            @socket.puts("and 'download' to download a certain file") #used in combination with list to sync files
+            @socket.puts("and")
+            @socket.puts("'download' to download a certain file") #used in combination with list to sync files
             decision = @socket.gets.chomp
-            #do nothing right now
+            case decision #probably make this a hash-table lookup, but not right now
+            end
          end
 
          #presumably this connection is over with, get rid of the client's sockets
@@ -45,9 +47,15 @@ class Connection
       if (@sanitized_name) #if we've got a username and it's sanitized
          finalized_path = "data/files/#{@sanitized_name}/#{sanitized_path}"
          size = @socket.gets.chomp.to_i #get the size from the client
-         data = @socket.read(size) #get the data from the client (definitely bad for large files)
+         incomplete_size = size #size left to read
+         max_read_size = 8*1024*1024 #max read size is a nice arbirary 8mb
          File.open(finalized_path, "w") do |f|
-            f.write(data) #write that data to a file.
+            while incomplete_size > 0 #while we have stuff to read
+               size_to_read = max_read_size > incomplete_size ? incomplete_size : max_read_size
+               data = @socket.read(size_to_read) #get the data from the client
+               f.write(data) #write that data to a file.
+               incomplete_size -= size_to_read
+            end
          end
       end
    end
