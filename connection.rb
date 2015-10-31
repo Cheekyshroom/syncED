@@ -4,36 +4,35 @@ require "base64"
 
 class Connection
    attr_reader :thread, :username
-   def initialize(socket, id, config)
+   def initialize(socket, id, server)
       @thread = nil
       @socket = socket
       @id = id
       @thread = Thread.new do
-         @socket.puts("Hello client \##{@id}, enter your username: ")
+         @socket.puts("Welcome to syncED, please enter your username")
          @username = @socket.gets.chomp
          @sanitized_name = sanitize(@username) #sanitize their username for later
          dir = "data/files/#{@sanitized_name}/"
          Dir.mkdir(dir) unless Dir.exist?(dir)
-         config.add_user(@username) #add their username to our permanent config file.
-         
-
-         puts("User #{@username} initialized.")
+         server.add_user_to_config(@username)
       end
    end
    def handle
-      @thread.join #make sure that we've got our username first
       thread = Thread.new do
          puts("Handling user #{@username}.")
-
-
+         @thread.join #make sure that we've got our username first
          @thread = thread #if we have, make this the main thread for this connection
-         #arbitrary test messages
-         10.times do |i|
-            @socket.puts("Message \##{i} to client #{@id}")
-            sleep(1)
+
+         loop do #main user interaciton loop
+            @socket.puts("Send a message with your decision:")
+            @socket.puts("'list' to list currently owned files,")
+            @socket.puts("'new' to upload a new file,")
+            @socket.puts("'remove' to remove a file,")
+            @socket.puts("and 'download' to download a certain file") #used in combination with list to sync files
+            decision = @socket.gets.chomp
+            #do nothing right now
          end
-         #random file test messages
-         receive_file
+
          #presumably this connection is over with, get rid of the client's sockets
          #remove this later
          @socket.puts("Bye client \##{@id}")
