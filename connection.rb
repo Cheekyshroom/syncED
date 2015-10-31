@@ -28,6 +28,8 @@ class Connection
 
          loop do #main user interaction loop
             puts("Querying #{@username}")
+            @socket.print("> ")
+            @socket.flush
             decision = @socket.gets.chomp
             case decision #probably make this a hash-table lookup, but not right now
                when "list" then
@@ -55,6 +57,8 @@ class Connection
    end
    def display_help
       @socket.puts("Send a message with your decision:")
+      @socket.puts("'help' to redisplay this message")
+      @socket.puts("'quit' to exit")
       @socket.puts("'list' to list currently owned files,")
       @socket.puts("'upload' to upload a new file,")
       @socket.puts("'remove' to remove a file,")
@@ -76,6 +80,7 @@ class Connection
          remaining_bytes = size #size left to read
          max_read_size = 8*1024*1024 #max read size is a nice arbirary 8mb
          @socket.puts("Now give me all the data:")
+         @socket.flush
          File.open(finalized_path, "w") do |f|
             while remaining_bytes > 0 #while we have stuff to read
                size_to_read = max_read_size > remaining_bytes ? remaining_bytes : max_read_size
@@ -116,13 +121,19 @@ class Connection
       end
    end
    def list_files
+      puts("Beginning list")
       if @sanitized_name
          @socket.puts("Current user files are:")
          user_dir = "data/files/#{@sanitized_name}/"
          Dir.foreach(user_dir) do |filename|
-            @socket.puts(unsanitize(filename))
+            if filename != "." and filename != ".."
+               @socket.puts(unsanitize(filename))
+               puts("printed #{unsanitize(filename)}")
+            end
          end
       end
+      puts("Ending list")
+      @socket.flush
    end
    def sanitize(name)
       Base64.urlsafe_encode64(name)
