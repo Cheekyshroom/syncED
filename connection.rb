@@ -1,6 +1,6 @@
-require "socket"
-require "thread"
-require "base64"
+require 'socket'
+require 'thread'
+require 'base64'
 
 class Connection
    attr_reader :thread, :username
@@ -12,6 +12,7 @@ class Connection
          @socket.puts("Welcome to syncED, please enter your username")
          @username = @socket.gets.chomp
          @sanitized_name = sanitize(@username) #sanitize their username for later
+         @user_dir = "data/files/#{@sanitized_name}/"
          #make sure that their user folder exists and isn't harmful
          dir = "data/files/#{@sanitized_name}/"
          Dir.mkdir(dir) unless Dir.exist?(dir)
@@ -30,19 +31,19 @@ class Connection
             puts("Querying #{@username}")
             @socket.print("> ")
             @socket.flush
-            decision = @socket.gets.chomp
+            decision = (@socket.gets or "").chomp
             case decision #probably make this a hash-table lookup, but not right now
                when "list" then
                   list_files
                when "upload" then
                   receive_file
-               when "remove" then
-
+               when "delete" then
+                  request_delete
                when "download" then
                   request_send_file
                when "help" then
                   display_help
-               when "quit" then
+               when ("quit" and "") then
                   break
                else
                   puts("#{@username} entered invalid decision: #{decision}")
@@ -55,13 +56,13 @@ class Connection
          @socket.close
       end
    end
-   def display_help
+   def display_help #although this shouldn't ever be neccessary as we're going to use this as a fileserver for our client
       @socket.puts("Send a message with your decision:")
       @socket.puts("'help' to redisplay this message")
       @socket.puts("'quit' to exit")
       @socket.puts("'list' to list currently owned files,")
       @socket.puts("'upload' to upload a new file,")
-      @socket.puts("'remove' to remove a file,")
+      @socket.puts("'delete' to delete a file,")
       @socket.puts("and")
       @socket.puts("'download' to download a certain file") #used in combination with list to sync files
       @socket.flush
@@ -73,7 +74,7 @@ class Connection
       path = @socket.gets.chomp #read the desired filename from the client
       sanitized_path = sanitize(path) #sanitize it just in case
       if @sanitized_name #if we've got a username and it's sanitized
-         finalized_path = "data/files/#{@sanitized_name}/#{sanitized_path}"
+         finalized_path = @user_dir+sanitized_path
          @socket.puts("Give me a filesize:")
          @socket.flush
          size = @socket.gets.chomp.to_i #get the size from the client
@@ -98,7 +99,7 @@ class Connection
       @socket.flush
       path = @socket.gets.chomp #receive a file path
       sanitized_path = sanitize(path) #sanitize it
-      finalized_path = "data/files/#{@sanitized_name}/#{sanitized_path}" #complete it
+      finalized_path = @user_dir+sanitized_path #complete it
       send_file(finalized_path, path) #send the file
    end
    def send_file(safe_path, path)
@@ -121,19 +122,28 @@ class Connection
       end
    end
    def list_files
-      puts("Beginning list")
       if @sanitized_name
          @socket.puts("Current user files are:")
-         user_dir = "data/files/#{@sanitized_name}/"
-         Dir.foreach(user_dir) do |filename|
+         Dir.foreach(@user_dir) do |filename|
             if filename != "." and filename != ".."
-               @socket.puts(unsanitize(filename))
+               @socket.puts("#{unsanitize(filename)} \# #{File.mtime(@user_dir+filename)}")
                puts("printed #{unsanitize(filename)}")
             end
          end
       end
-      puts("Ending list")
       @socket.flush
+   end
+   def request_delete
+      @socket.puts("Give me a filename:")
+      path = @socket.gets.chomp
+      sanitized_path = sanitize(path)
+      finalized_path = @user_dir+sanitized_path
+      delete_file(finalized_path, path)
+   end
+   def delete_file(safe_path, path)
+      if @sanitized_name and File.exist?(safe_path)
+         File.delete(safe_path)
+      end
    end
    def sanitize(name)
       Base64.urlsafe_encode64(name)
