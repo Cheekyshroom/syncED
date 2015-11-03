@@ -11,5 +11,5 @@ Will either start up a graphical editor / logon screen if connect is chosen, or 
 ##### Server and client message handling: Done
 ##### Client side editing: In progress
 ##### Proper login and logout and user validation: In progress
-##### Config files: Done
-##### Encryption and Security things
+##### Config files: In progress
+##### Encryption and Security things: In progress
